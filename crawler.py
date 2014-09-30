@@ -37,9 +37,6 @@ def autoCorrectCheck(soup):
         return spellcheck.text.strip()
     else:
         return 0
-        
-
-
 
 # Check the case of no result 
 # @returns 1 if there are no result for key word
@@ -99,65 +96,103 @@ def main():
     if keyword.isspace() or parsedkeyword=='':
         print "Enter someting,bro~"
         return 
-
-
     
     baseurl="http://www.sears.com" # base url of the site
     viewItems="viewItems=25"    # default viewItem=25
 
-    #--------------------------Query 1 return total number of results---------    
-    if parsed[2]==0:
+    # get the redirected url
+    redirectedurl=handleRedirect(baseurl,parsedkeyword,viewItems).replace(" ","%20")
 
-        # get the redirected url
-        redirectedurl=handleRedirect(baseurl,parsedkeyword,viewItems).replace(" ","%20")
-
-        req = urllib2.Request(redirectedurl)
-        r = urllib2.urlopen(req).read()
+    req = urllib2.Request(redirectedurl)
+    r = urllib2.urlopen(req).read()
         
-        # soup
-        soup=BeautifulSoup(r)
+    # soup
+    soup=BeautifulSoup(r)
         #print soup
          
         # check no resulf for keyword
-        if noresultCheck(soup)==1:
+    if noresultCheck(soup)==1:
             print '--------------------'
             print "Sorry we could not find any matches for "+'''"'''+keyword+'''"'''+"."
             return 
          
          # check if the input is department store name
-        if departmentCheck(soup)==1:
+    if departmentCheck(soup)==1:
+            #print redirectedurl
+            text=soup.find('title').text
+            #print text
             print '--------------------'
-            print 'You are in department of '+keyword+'.'
-            print 'Please search something specific.'
+
+            print 'You are in catagory of '+text+'.'
+            print 'Find what you want here by searching something more specific.'
             return
 
-        if autoCorrectCheck(soup)!=0:
+    if autoCorrectCheck(soup)!=0:
             print '--------------------'
             print "You are searching for: ",autoCorrectCheck(soup)
 
+    # get the container for numbers of all products and sears only products
+    Items=soup.find_all('span',{'class':'tab-filters-count'})
+                
+    allnum=Items[0].text.replace("(","").replace(")","")
 
-        #print num
-        #test=soup.find_all('strong')
-        #print test
-        Items=soup.find_all('span',{'class':'tab-filters-count'})
-        #num=numProdItems.find('span')
-        
-        #print len(Items)
-        print "All products found: ",Items[0].text.replace("(","").replace(")","")
+    #--------------------------Query 1 return total number of results---------    
+    if parsed[2]==0:
+
+    
+        print "All products found: ",allnum
 
         
         print "Sears only found: ",Items[1].text.replace("(","").replace(")","")
 
     #--------------------------Query 2 return object---------    
     else: 
-        print type(pageNum)
-        print pageNum
-        redirectedurl=handleRedirect(baseurl,parsedkeyword,viewItems).replace(" ","%20")
-        req = urllib2.Request(redirectedurl)
-        r = urllib2.urlopen(req).read()
+        #print type(pageNum)
+        #print pageNum
+        #print allnum
+        try:
+            allnum=int(allnum)
+            pageUpBound=allnum/25+1
+        except:
+            pageUpBound=20 # could modify to a bigger one
+        
+        # check if pageNumber is valid 
+        if pageNum>pageUpBound or pageNum<1:
+            print "Invalid page number! Try one between 1 and "+str(pageUpBound)+"."
+            return 
+
+
+        # assemble new url with pageNum
+        if '?' in redirectedurl:
+            pageurl=redirectedurl+"&pageNum="+str(pageNum)
+        else:
+            pageurl=redirectedurl+"?pageNum="+str(pageNum)
+
+        print pageurl
+
+        req_page = urllib2.Request(pageurl)
+        r_page = urllib2.urlopen(req).read()
+
+        # new soup
+        soup_page=BeautifulSoup(r_page)
+
+        # get all containers
+        containers=soup_page.find_all('div',{'class':'cardContainer\
+         addToCartEnabled'})
+
+        #for (container)
+        # get title price & vendor 
+
+
+
+
+
+        #redirectedurl=handleRedirect(baseurl,parsedkeyword,viewItems).replace(" ","%20")
+        #req = urllib2.Request(redirectedurl)
+        #r = urllib2.urlopen(req).read()
         
         # soup
-        soup=BeautifulSoup(r)
+        #soup=BeautifulSoup(r)
 
 
 
