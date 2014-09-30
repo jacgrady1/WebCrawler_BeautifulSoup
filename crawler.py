@@ -54,7 +54,6 @@ def noresultCheck(soup):
 #          0 if the keyword doesn't belong to a department name
 def departmentCheck(soup):
     numProdItems=soup.find('div',{'id':'nmbProdItems'})
-    #print numProdItems
     if numProdItems==None:        
         return 1
     return 0
@@ -71,7 +70,6 @@ def countItem(url):
 # this fuction handles the redirect of the url
 # returns the newly redirected url
 def handleRedirect(baseurl,parsedkeyword,viewItems):
-    #print parsedkeyword
     url=baseurl+"/search="+parsedkeyword+"?"+viewItems #assemble url
     
     req = urllib2.Request(url)
@@ -108,7 +106,6 @@ def main():
         
     # soup
     soup=BeautifulSoup(r)
-        #print soup
          
         # check no resulf for keyword
     if noresultCheck(soup)==1:
@@ -118,9 +115,7 @@ def main():
          
          # check if the input is department store name
     if departmentCheck(soup)==1:
-            #print redirectedurl
             text=soup.find('title').text
-            #print text
             print '--------------------'
 
             print 'You are in catagory of '+text+'.'
@@ -139,6 +134,7 @@ def main():
     #--------------------------Query 1 return total number of results---------    
     if parsed[2]==0:
 
+
     
         print "All products found: ",allnum
 
@@ -147,9 +143,7 @@ def main():
 
     #--------------------------Query 2 return object---------    
     else: 
-        #print type(pageNum)
-        #print pageNum
-        #print allnum
+        
         try:
             allnum=int(allnum)
             pageUpBound=allnum/25+1
@@ -168,43 +162,45 @@ def main():
         else:
             pageurl=redirectedurl+"?pageNum="+str(pageNum)
 
-        print pageurl
+        #print pageurl
 
         req_page = urllib2.Request(pageurl)
-        r_page = urllib2.urlopen(req).read()
+        r_page = urllib2.urlopen(req_page).read()
 
         # new soup
         soup_page=BeautifulSoup(r_page)
+
+        
 
         # get all containers
         containers=soup_page.find_all('div',{'class':'cardContainer\
          addToCartEnabled'})
 
-        #for (container)
-        # get title price & vendor 
-
-
-
-
-
-        #redirectedurl=handleRedirect(baseurl,parsedkeyword,viewItems).replace(" ","%20")
-        #req = urllib2.Request(redirectedurl)
-        #r = urllib2.urlopen(req).read()
         
-        # soup
-        #soup=BeautifulSoup(r)
+        i=1 # label all items 
 
-
-
-
-
-
-
-
+        for container in containers:
+            
+            title=container.find('h2',{'itemprop':'name'})
+            print '--------------------'
+            print i
+            i+=1
+            
+            print "Title:"+title.find('a').text
+            
+            try:
+                price=container.find('span',{'class':'price_v2 intShipHide'}).text
+            except:
+                price="unavailable"
+            print "Price:"+price
+            
+            try:
+                vendor=container.find('div',{'id':'mrkplc'}).find_all('p')[-1].text
+          
+            except:
+                vendor="Sold by Sears"
+            print vendor
         
-
-
-
 
 
 if __name__ == "__main__":
