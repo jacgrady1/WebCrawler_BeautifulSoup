@@ -1,6 +1,9 @@
 # Name:   		 Web Crawler 
-# Description :  A robust text scraper to connect to page on www.walmart.com and 
+# Description :  A robust text scraper to connect to page on www.sears.com and 
 # 				 return results about a given keyword. 
+#                To inlude all the the dependencies, I used virtualenv in this 
+#                assignment. To run this .py file, first run the virtualenv by 
+#                typing source bin/activate.
 # Author: 		 Gongxun (Jack) Liu
 # Created: 		 2014.9.30
 
@@ -8,13 +11,15 @@ import urllib2
 from bs4 import BeautifulSoup
 import argparse
 import re
+import requests
+
 
 # parse command line args 
 # @ returns an array of [unparsedKeyword,parsedKeyword,parsedPageNum]
 def parseArgs():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("keyword",help="enter the keyword",nargs="?",default="digital camera")
+    parser.add_argument("keyword",help="enter the keyword",nargs="?",default="noitem")
     parser.add_argument("pageNum",help="enter the page number",nargs="?",default=0, type=int)
     args = parser.parse_args()
     
@@ -31,6 +36,8 @@ def parseArgs():
 # Check spelling of the command line input  
 
 # there is not spelling check in sears
+# @returns 0 if there is no autocorrect for the keyword
+#          autocorrected keyword if there is any 
 def autoCorrectCheck(soup):
     spellcheck=soup.find("span",{"class":"searchTerm"})
     if spellcheck!=None:
@@ -59,25 +66,26 @@ def departmentCheck(soup):
     return 0
 
 
-# Count the number of items appears on that page
-def countItem(url):
-    r=requests.get(url)
-    soup=BeautifulSoup(r.content)
-    items = soup.find_all("div",{"class":"tile-content-wrapper"})
-    return len(items)
-
-
 # this fuction handles the redirect of the url
-# returns the newly redirected url
+# @ returns the newly redirected url
 def handleRedirect(baseurl,parsedkeyword,viewItems):
-    url=baseurl+"/search="+parsedkeyword+"?"+viewItems #assemble url
-    
+    url=baseurl+"/search="+parsedkeyword +"?"+viewItems #assemble url
     req = urllib2.Request(url)
-    r = urllib2.urlopen(req).read()
-    rawurl = re.findall(r"var url = \"(.+?)\";",r)
-    if rawurl==[]: # that's a noresult
-        return url
-    return baseurl+rawurl[0].replace("\\","")
+    thing = urllib2.HTTPRedirectHandler()
+    thing2 = urllib2.HTTPCookieProcessor()
+    opener = urllib2.build_opener(thing, thing2)
+    try:
+        page = opener.open(req).read()
+
+        rawurl = re.findall(r"var url = \"(.+?)\";",page)
+        if rawurl==[]: # that's a noresult
+           return url
+        return baseurl+rawurl[0].replace("\\","")
+    except:
+
+        r = requests.get(url, allow_redirects=True)
+        return r.url
+
 
 
 def main():
@@ -91,19 +99,21 @@ def main():
     pageNum=parsed[2]
 
 
-    if keyword.isspace() or parsedkeyword=='':
+    if keyword.isspace() or parsedkeyword=='' or parsedkeyword=="noitem":
         print "Enter someting,bro~"
         return 
     
     baseurl="http://www.sears.com" # base url of the site
     viewItems="viewItems=25"    # default viewItem=25
 
-    # get the redirected url
     redirectedurl=handleRedirect(baseurl,parsedkeyword,viewItems).replace(" ","%20")
-
     req = urllib2.Request(redirectedurl)
-    r = urllib2.urlopen(req).read()
-        
+    try:
+        r = urllib2.urlopen(req).read()
+    except:
+        print "Java Script is messing up with my crawler!"
+        #print redirectedurl
+        return 
     # soup
     soup=BeautifulSoup(r)
          
@@ -133,14 +143,12 @@ def main():
 
     #--------------------------Query 1 return total number of results---------    
     if parsed[2]==0:
-
-
     
         print "All products found: ",allnum
-
         
         print "Sears only found: ",Items[1].text.replace("(","").replace(")","")
 
+    
     #--------------------------Query 2 return object---------    
     else: 
         
@@ -180,23 +188,29 @@ def main():
         i=1 # label all items 
 
         for container in containers:
-            
+            # fetch title from the page
             title=container.find('h2',{'itemprop':'name'})
             print '--------------------'
             print i
             i+=1
             
             print "Title:"+title.find('a').text
-            
+            # handle the no price case
             try:
                 price=container.find('span',{'class':'price_v2 intShipHide'}).text
             except:
                 price="unavailable"
             print "Price:"+price
             
+            # handle the no vendor case
+            # note that the for loop is to find vendor information in different cases
             try:
-                vendor=container.find('div',{'id':'mrkplc'}).find_all('p')[-1].text
-          
+                vendors=container.find('div',{'id':'mrkplc'}).find_all('p')
+                #[-1].text
+                vendor=""
+                for v in vendors:
+                    if v.text.startswith("Sold by"):
+                        vendor=v.text
             except:
                 vendor="Sold by Sears"
             print vendor
@@ -205,8 +219,7 @@ def main():
 
 if __name__ == "__main__":
    main()
-   #print("--- %s seconds ---" % str(time.time() - start_time))
-
+   
 	
 
     
